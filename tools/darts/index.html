@@ -46,11 +46,60 @@
       display: flex; justify-content: space-between; align-items: center;
       padding: 12px 14px; border-radius: 12px; background: var(--card);
       border: 2px solid transparent;
+      position: relative; overflow: visible;
     }
     .score-row.current { border-color: var(--accent); }
     .score-row .name { font-weight: 600; }
-    .score-row .score { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 22px; font-weight: 700; }
+    .score-row .score {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 22px; font-weight: 700;
+      display: inline-block;
+    }
     .score-row .tag { color: var(--muted); font-size: 12px; margin-left: 8px; }
+
+    /* Gotcha! animation */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); background: rgba(224, 96, 96, 0.3); }
+      40% { transform: translateX(6px); background: rgba(224, 96, 96, 0.3); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    @keyframes scoreFall {
+      0% { transform: translateY(0) rotate(0); opacity: 1; }
+      40% { transform: translateY(4px) rotate(-6deg); opacity: 1; }
+      100% { transform: translateY(60px) rotate(25deg); opacity: 0; }
+    }
+    .score-row.got { animation: shake 0.5s ease; }
+    .score-row.got .score { animation: scoreFall 0.9s ease-in forwards; }
+    .score-row .reset-flash {
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: #e06060; font-weight: 800; font-size: 22px;
+      pointer-events: none;
+      opacity: 0;
+      animation: flashIn 0.9s ease forwards;
+      animation-delay: 0.5s;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    @keyframes flashIn {
+      0% { opacity: 0; transform: translateY(-50%) scale(0.5); }
+      60% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+      100% { opacity: 1; transform: translateY(-50%) scale(1); }
+    }
+    /* Particle explosion */
+    .particle {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #e06060;
+      pointer-events: none;
+      animation: particleFly 0.8s ease-out forwards;
+    }
+    @keyframes particleFly {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+    }
 
     .turn-box { margin-top: 18px; padding: 14px; background: var(--card); border-radius: 12px; }
     .turn-header {
@@ -214,6 +263,7 @@
       history: [],                 // stack of snapshots, one per dart thrown
       log: [],
       modifier: 1,                 // 1=single, 2=double, 3=triple (for next number-button press)
+      gotIdxs: [],                 // transient: indices just reset by Gotcha (animate this render)
     };
 
     const TARGETS = {
@@ -388,15 +438,20 @@
 
           // Gotcha rule: check after each dart.
           const got = [];
+          const gotEntries = [];
           for (let i = 0; i < state.players.length; i++) {
             if (i === state.currentIdx) continue;
             const other = state.players[i];
             if (other.score > 0 && other.score === player.score) {
+              gotEntries.push({ idx: i, oldScore: other.score });
               other.score = 0;
               got.push(other.name);
             }
           }
-          if (got.length) logTurn(`  ⚡ GOTCHA! Reset: ${got.join(", ")}`);
+          if (got.length) {
+            logTurn(`  ⚡ GOTCHA! Reset: ${got.join(", ")}`);
+            state.gotIdxs = gotEntries;
+          }
         }
       }
 
@@ -454,12 +509,27 @@
       // Scoreboard
       const board = $("scoreboard");
       board.innerHTML = "";
+      const gotThisRender = state.gotIdxs;
+      state.gotIdxs = []; // consume
       state.players.forEach((p, i) => {
         const row = document.createElement("div");
-        row.className = "score-row" + (i === state.currentIdx && state.phase === "playing" ? " current" : "");
+        const gotEntry = gotThisRender.find((g) => g.idx === i);
+        const isGot = !!gotEntry;
+        row.className = "score-row"
+          + (i === state.currentIdx && state.phase === "playing" ? " current" : "")
+          + (isGot ? " got" : "");
         const tag = (state.phase === "ended" && i === state.winnerIdx) ? ' <span class="tag">🏆 winner</span>' : "";
-        row.innerHTML = `<div class="name">${escapeHtml(p.name)}${tag}</div><div class="score">${p.score}</div>`;
+        // When got, render the old score in the falling element; new 0 flashes in via reset-flash.
+        const displayedScore = isGot ? gotEntry.oldScore : p.score;
+        row.innerHTML = `<div class="name">${escapeHtml(p.name)}${tag}</div><div class="score">${displayedScore}</div>`;
+        if (isGot) {
+          const flash = document.createElement("span");
+          flash.className = "reset-flash";
+          flash.textContent = "0";
+          row.appendChild(flash);
+        }
         board.appendChild(row);
+        if (isGot) spawnParticles(row);
       });
 
       if (state.phase === "ended") {
@@ -501,6 +571,28 @@
 
     function escapeHtml(s) {
       return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function spawnParticles(row) {
+      const colors = ["#e06060", "#f0a030", "#ffd24a", "#7aa2f7", "#ff6bcb"];
+      const count = 14;
+      const rect = row.getBoundingClientRect();
+      const originX = rect.width - 30;
+      const originY = rect.height / 2;
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement("span");
+        p.className = "particle";
+        p.style.left = originX + "px";
+        p.style.top = originY + "px";
+        p.style.background = colors[i % colors.length];
+        const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.6 - 0.3);
+        const dist = 50 + Math.random() * 40;
+        p.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        p.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+        p.style.width = p.style.height = (5 + Math.random() * 6) + "px";
+        row.appendChild(p);
+        setTimeout(() => p.remove(), 900);
+      }
     }
 
     // Init
