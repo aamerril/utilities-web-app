@@ -7,6 +7,12 @@
       "path": "./tools/wordle-helper/"
     },
     {
+      "name": "Darts",
+      "description": "301 & Gotcha scoring",
+      "emoji": "🎯",
+      "path": "./tools/darts/"
+    },
+    {
       "name": "Template Tool",
       "description": "Copy me to start a new tool",
       "emoji": "🧩",

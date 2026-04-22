@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Darts</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    .tool { padding: 20px; max-width: 680px; margin: 0 auto; }
+    .tool a.back { color: var(--accent); text-decoration: none; }
+    h2 { margin-top: 24px; font-size: 18px; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .players-setup { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .player-row { display: flex; gap: 8px; align-items: center; }
+    .player-row input {
+      flex: 1; padding: 10px 12px; font-size: 16px;
+      border-radius: 10px; border: 1px solid var(--muted);
+      background: var(--card); color: var(--fg);
+    }
+    .player-row button {
+      border: none; background: transparent; color: var(--muted);
+      font-size: 20px; cursor: pointer; padding: 6px 10px;
+    }
+
+    .game-types { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .game-types label {
+      display: flex; gap: 10px; padding: 12px; border-radius: 10px;
+      background: var(--card); cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .game-types label.selected { border-color: var(--accent); }
+    .game-types .g-name { font-weight: 600; }
+    .game-types .g-desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    .primary, .secondary, .danger {
+      margin-top: 16px; padding: 12px 16px; font-size: 16px;
+      border-radius: 10px; border: none; cursor: pointer; font-weight: 600;
+    }
+    .primary { background: var(--accent); color: #0f1115; }
+    .secondary { background: transparent; color: var(--fg); border: 1px solid var(--muted); }
+    .danger { background: transparent; color: #e06060; border: 1px solid #e06060; }
+
+    .scoreboard { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .score-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; border-radius: 12px; background: var(--card);
+      border: 2px solid transparent;
+    }
+    .score-row.current { border-color: var(--accent); }
+    .score-row .name { font-weight: 600; }
+    .score-row .score { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 22px; font-weight: 700; }
+    .score-row .tag { color: var(--muted); font-size: 12px; margin-left: 8px; }
+
+    .turn-box { margin-top: 18px; padding: 14px; background: var(--card); border-radius: 12px; }
+    .turn-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .turn-header .who { font-weight: 700; font-size: 16px; }
+    .turn-header .target { color: var(--muted); font-size: 13px; }
+
+    .dart-slots {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 8px;
+    }
+    .dart-slot {
+      min-height: 50px; display: flex; align-items: center; justify-content: center;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 20px; font-weight: 700;
+      border-radius: 10px; border: 2px dashed var(--muted);
+      background: transparent; color: var(--muted);
+    }
+    .dart-slot.filled { border-style: solid; border-color: var(--accent); color: var(--fg); }
+    .dart-slot.active { border-color: var(--accent); border-style: solid; color: var(--accent); }
+
+    /* Keypad */
+    .keypad {
+      margin-top: 12px; padding: 12px; background: var(--bg);
+      border-radius: 12px; border: 1px solid var(--muted);
+    }
+    .modifier-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px;
+    }
+    .modifier-row button {
+      padding: 10px; border: 2px solid var(--muted); background: transparent;
+      color: var(--fg); border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .modifier-row button.active { border-color: var(--accent); color: var(--accent); background: rgba(122, 162, 247, 0.1); }
+
+    .num-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    }
+    .num-grid button {
+      padding: 14px 0;
+      border: 1px solid var(--muted); background: var(--card);
+      color: var(--fg); border-radius: 8px;
+      font-size: 17px; font-weight: 600; cursor: pointer;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .num-grid button:active { background: var(--accent); color: #0f1115; }
+
+    .special-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px;
+    }
+    .special-row button {
+      padding: 14px 0; border-radius: 8px; font-weight: 700; cursor: pointer;
+      font-size: 15px; border: 1px solid var(--muted); background: var(--card); color: var(--fg);
+    }
+    .special-row button.miss { color: #e06060; border-color: #e06060; }
+    .special-row button.bull { color: #d33; border-color: #d33; }
+
+    .turn-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .turn-actions button { flex: 1; margin-top: 0; }
+
+    .winner {
+      margin-top: 20px; padding: 20px; text-align: center;
+      background: var(--accent); color: #0f1115; border-radius: 16px;
+      font-size: 22px; font-weight: 700;
+    }
+    .log { margin-top: 16px; color: var(--muted); font-size: 13px; max-height: 160px; overflow-y: auto; }
+    .log div { padding: 2px 0; }
+  </style>
+</head>
+<body>
+  <div class="tool">
+    <p><a href="../../" class="back">&larr; Hub</a></p>
+    <h1>Darts 🎯</h1>
+
+    <!-- SETUP -->
+    <section id="setup">
+      <h2>Game type</h2>
+      <div class="game-types" id="gameTypes">
+        <label class="selected">
+          <input type="radio" name="gameType" value="301" checked />
+          <div>
+            <div class="g-name">301 (any in / any out)</div>
+            <div class="g-desc">Start at 301, count down to exactly 0. Go below and you bust, dropping to the amount you went over.</div>
+          </div>
+        </label>
+        <label>
+          <input type="radio" name="gameType" value="gotcha" />
+          <div>
+            <div class="g-name">Gotcha</div>
+            <div class="g-desc">Start at 0, count up to exactly 301. Land on another player's score to reset them to 0.</div>
+          </div>
+        </label>
+      </div>
+
+      <h2>Players <span id="playerCount" class="hint"></span></h2>
+      <div class="players-setup" id="playersSetup"></div>
+      <button class="secondary" id="addPlayer">+ Add player</button>
+
+      <br />
+      <button class="primary" id="startGame">Start game</button>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" hidden>
+      <div id="winner" class="winner" hidden></div>
+      <div class="scoreboard" id="scoreboard"></div>
+
+      <div class="turn-box" id="turnBox">
+        <div class="turn-header">
+          <span class="who" id="currentTurnLabel"></span>
+          <span class="target" id="currentTurnScore"></span>
+        </div>
+        <div class="dart-slots" id="dartSlots">
+          <div class="dart-slot active" data-idx="0">—</div>
+          <div class="dart-slot" data-idx="1">—</div>
+          <div class="dart-slot" data-idx="2">—</div>
+        </div>
+
+        <div class="keypad">
+          <div class="modifier-row">
+            <button data-mod="1" class="active">Single</button>
+            <button data-mod="2">Double</button>
+            <button data-mod="3">Triple</button>
+          </div>
+          <div class="num-grid" id="numGrid"></div>
+          <div class="special-row">
+            <button class="miss" data-special="0">Miss (0)</button>
+            <button class="bull" data-special="25">25</button>
+            <button class="bull" data-special="50">Bull (50)</button>
+          </div>
+        </div>
+
+        <div class="turn-actions">
+          <button class="secondary" id="undoDart">Undo last throw</button>
+          <button class="secondary" id="endTurnEarly" title="Skip remaining darts">End turn</button>
+        </div>
+      </div>
+
+      <div class="log" id="log"></div>
+
+      <button class="danger" id="newGame">New game</button>
+    </section>
+  </div>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+
+    // ---------- State ----------
+    const state = {
+      phase: "setup",              // "setup" | "playing" | "ended"
+      gameType: "301",
+      players: [
+        { name: "Player 1", score: 0 },
+        { name: "Player 2", score: 0 },
+      ],
+      currentIdx: 0,
+      winnerIdx: null,
+      turnDarts: [],               // scores thrown this turn (0..60 or 25/50)
+      history: [],                 // stack of snapshots, one per dart thrown
+      log: [],
+      modifier: 1,                 // 1=single, 2=double, 3=triple (for next number-button press)
+    };
+
+    const TARGETS = {
+      "301":    { start: 301, target: 0,   direction: -1 },
+      "gotcha": { start: 0,   target: 301, direction: +1 },
+    };
+
+    // ---------- Setup UI ----------
+    function renderSetup() {
+      const wrap = $("playersSetup");
+      wrap.innerHTML = "";
+      state.players.forEach((p, i) => {
+        const row = document.createElement("div");
+        row.className = "player-row";
+        row.innerHTML = `
+          <input type="text" placeholder="Player name" aria-label="Player ${i + 1} name" />
+          <button title="Remove">&times;</button>
+        `;
+        const input = row.querySelector("input");
+        input.value = p.name;
+        input.addEventListener("input", (e) => { p.name = e.target.value; });
+        row.querySelector("button").addEventListener("click", () => {
+          if (state.players.length <= 1) return;
+          state.players.splice(i, 1);
+          renderSetup();
+        });
+        wrap.appendChild(row);
+      });
+      $("playerCount").textContent = `(${state.players.length}/8)`;
+      $("addPlayer").disabled = state.players.length >= 8;
+    }
+
+    $("addPlayer").addEventListener("click", () => {
+      if (state.players.length >= 8) return;
+      state.players.push({ name: `Player ${state.players.length + 1}`, score: 0 });
+      renderSetup();
+    });
+
+    $("gameTypes").addEventListener("change", (e) => {
+      state.gameType = e.target.value;
+      document.querySelectorAll("#gameTypes label").forEach((l) => {
+        l.classList.toggle("selected", l.querySelector("input").checked);
+      });
+    });
+
+    $("startGame").addEventListener("click", () => {
+      const cfg = TARGETS[state.gameType];
+      state.players.forEach((p, i) => {
+        if (!p.name.trim()) p.name = `Player ${i + 1}`;
+        p.score = cfg.start;
+      });
+      state.currentIdx = 0;
+      state.winnerIdx = null;
+      state.turnDarts = [];
+      state.history = [];
+      state.log = [];
+      state.phase = "playing";
+      render();
+    });
+
+    // ---------- Keypad ----------
+    function buildKeypad() {
+      const grid = $("numGrid");
+      grid.innerHTML = "";
+      for (let n = 1; n <= 20; n++) {
+        const b = document.createElement("button");
+        b.textContent = n;
+        b.addEventListener("click", () => throwDart(n * state.modifier, describeDart(n, state.modifier)));
+        grid.appendChild(b);
+      }
+      // Modifier toggles
+      document.querySelectorAll(".modifier-row button").forEach((btn) => {
+        btn.addEventListener("click", () => setModifier(Number(btn.dataset.mod)));
+      });
+      // Special buttons
+      document.querySelectorAll(".special-row button").forEach((btn) => {
+        const val = Number(btn.dataset.special);
+        btn.addEventListener("click", () => {
+          const label = val === 0 ? "Miss" : val === 25 ? "25" : "Bull (50)";
+          throwDart(val, label);
+        });
+      });
+    }
+
+    function setModifier(m) {
+      state.modifier = m;
+      document.querySelectorAll(".modifier-row button").forEach((btn) => {
+        btn.classList.toggle("active", Number(btn.dataset.mod) === m);
+      });
+    }
+
+    function describeDart(n, mod) {
+      if (mod === 2) return `D${n} (${n * 2})`;
+      if (mod === 3) return `T${n} (${n * 3})`;
+      return `${n}`;
+    }
+
+    // ---------- Per-dart logic ----------
+    function snapshot() {
+      return JSON.parse(JSON.stringify({
+        players: state.players,
+        currentIdx: state.currentIdx,
+        winnerIdx: state.winnerIdx,
+        turnDarts: state.turnDarts,
+        log: state.log,
+        phase: state.phase,
+      }));
+    }
+
+    function restore(snap) {
+      state.players = snap.players;
+      state.currentIdx = snap.currentIdx;
+      state.winnerIdx = snap.winnerIdx;
+      state.turnDarts = snap.turnDarts;
+      state.log = snap.log;
+      state.phase = snap.phase;
+    }
+
+    function throwDart(score, label) {
+      if (state.phase !== "playing") return;
+      if (state.turnDarts.length >= 3) return;
+
+      // Snapshot BEFORE applying so undo restores this exact pre-throw state.
+      state.history.push(snapshot());
+
+      const cfg = TARGETS[state.gameType];
+      const player = state.players[state.currentIdx];
+      const next = player.score + cfg.direction * score;
+
+      state.turnDarts.push(score);
+
+      // Check win / bust per-dart.
+      if (cfg.direction === -1) {
+        // 301 countdown.
+        if (next === 0) {
+          player.score = 0;
+          logTurn(`${player.name} threw ${label} → WINS!`);
+          state.winnerIdx = state.currentIdx;
+          state.phase = "ended";
+          setModifier(1);
+          render();
+          return;
+        } else if (next < 0) {
+          const over = Math.abs(next);
+          player.score = over;
+          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, dropped to ${over})`);
+          endTurn();
+          return;
+        } else {
+          player.score = next;
+          logTurn(`${player.name} threw ${label} → ${player.score}`);
+        }
+      } else {
+        // Gotcha count-up.
+        if (next === cfg.target) {
+          player.score = cfg.target;
+          logTurn(`${player.name} threw ${label} → WINS!`);
+          state.winnerIdx = state.currentIdx;
+          state.phase = "ended";
+          setModifier(1);
+          render();
+          return;
+        } else if (next > cfg.target) {
+          const over = next - cfg.target;
+          player.score = cfg.target - over;
+          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, dropped to ${player.score})`);
+          endTurn();
+          return;
+        } else {
+          player.score = next;
+          logTurn(`${player.name} threw ${label} → ${player.score}`);
+
+          // Gotcha rule: check after each dart.
+          const got = [];
+          for (let i = 0; i < state.players.length; i++) {
+            if (i === state.currentIdx) continue;
+            const other = state.players[i];
+            if (other.score > 0 && other.score === player.score) {
+              other.score = 0;
+              got.push(other.name);
+            }
+          }
+          if (got.length) logTurn(`  ⚡ GOTCHA! Reset: ${got.join(", ")}`);
+        }
+      }
+
+      // Reset modifier back to single after each throw.
+      setModifier(1);
+
+      if (state.turnDarts.length >= 3) {
+        endTurn();
+      } else {
+        render();
+      }
+    }
+
+    function endTurn() {
+      state.currentIdx = (state.currentIdx + 1) % state.players.length;
+      state.turnDarts = [];
+      setModifier(1);
+      render();
+    }
+
+    function logTurn(msg) { state.log.push(msg); }
+
+    $("undoDart").addEventListener("click", () => {
+      if (!state.history.length) return;
+      restore(state.history.pop());
+      setModifier(1);
+      render();
+    });
+
+    $("endTurnEarly").addEventListener("click", () => {
+      if (state.phase !== "playing") return;
+      if (!state.turnDarts.length) {
+        // Starting fresh & skipping turn.
+        logTurn(`${state.players[state.currentIdx].name} skipped turn`);
+      }
+      endTurn();
+    });
+
+    $("newGame").addEventListener("click", () => {
+      if (!confirm("Start a new game? Current scores will be lost.")) return;
+      state.phase = "setup";
+      render();
+    });
+
+    // ---------- Render ----------
+    function render() {
+      $("setup").hidden = state.phase !== "setup";
+      $("game").hidden = state.phase === "setup";
+
+      if (state.phase === "setup") {
+        renderSetup();
+        return;
+      }
+
+      // Scoreboard
+      const board = $("scoreboard");
+      board.innerHTML = "";
+      state.players.forEach((p, i) => {
+        const row = document.createElement("div");
+        row.className = "score-row" + (i === state.currentIdx && state.phase === "playing" ? " current" : "");
+        const tag = (state.phase === "ended" && i === state.winnerIdx) ? ' <span class="tag">🏆 winner</span>' : "";
+        row.innerHTML = `<div class="name">${escapeHtml(p.name)}${tag}</div><div class="score">${p.score}</div>`;
+        board.appendChild(row);
+      });
+
+      if (state.phase === "ended") {
+        $("turnBox").hidden = true;
+        $("winner").hidden = false;
+        $("winner").textContent = `🏆 ${state.players[state.winnerIdx].name} wins!`;
+      } else {
+        $("turnBox").hidden = false;
+        $("winner").hidden = true;
+        const player = state.players[state.currentIdx];
+        $("currentTurnLabel").textContent = `${player.name}'s turn`;
+        $("currentTurnScore").textContent = state.gameType === "301"
+          ? `${player.score} to go`
+          : `${player.score} / 301`;
+
+        // Dart slots
+        const slots = document.querySelectorAll(".dart-slot");
+        slots.forEach((slot, i) => {
+          slot.classList.remove("filled", "active");
+          if (i < state.turnDarts.length) {
+            slot.textContent = state.turnDarts[i];
+            slot.classList.add("filled");
+          } else {
+            slot.textContent = "—";
+            if (i === state.turnDarts.length) slot.classList.add("active");
+          }
+        });
+      }
+
+      // Log (most recent first)
+      const log = $("log");
+      log.innerHTML = "";
+      for (let i = state.log.length - 1; i >= 0; i--) {
+        const d = document.createElement("div");
+        d.textContent = state.log[i];
+        log.appendChild(d);
+      }
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // Init
+    buildKeypad();
+    renderSetup();
+  </script>
+</body>
+</html>
