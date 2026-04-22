@@ -1,5 +1,5 @@
 // Simple network-first service worker with offline fallback for shell files.
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `hub-${VERSION}`;
 const SHELL = [
   "./",
