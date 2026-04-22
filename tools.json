@@ -1,0 +1,16 @@
+{
+  "tools": [
+    {
+      "name": "Wordle Helper",
+      "description": "Suggests next guesses",
+      "emoji": "🟩",
+      "path": "./tools/wordle-helper/"
+    },
+    {
+      "name": "Template Tool",
+      "description": "Copy me to start a new tool",
+      "emoji": "🧩",
+      "path": "./tools/_template/"
+    }
+  ]
+}

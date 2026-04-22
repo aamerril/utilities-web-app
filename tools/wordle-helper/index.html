@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Wordle Helper</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    .tool { padding: 20px; max-width: 640px; margin: 0 auto; }
+    .tool a.back { color: var(--accent); text-decoration: none; }
+    label { display: block; margin-top: 14px; font-size: 13px; color: var(--muted); }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--muted);
+      background: var(--card);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      text-transform: lowercase;
+    }
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+      max-width: 360px;
+    }
+    .slots input {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      padding: 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 12px;
+      border: 2px solid var(--muted);
+      background: var(--card);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      caret-color: var(--accent);
+    }
+    .slots input:focus { outline: none; border-color: var(--accent); }
+    .slots.greens input:not(:placeholder-shown) {
+      background: #538d4e; border-color: #538d4e; color: #fff;
+    }
+    .slots.yellows input:not(:placeholder-shown) {
+      background: #b59f3b; border-color: #b59f3b; color: #fff;
+    }
+    button.primary {
+      margin-top: 16px;
+      padding: 12px 16px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      background: var(--accent);
+      color: #0f1115;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.ghost-btn {
+      margin-top: 16px; margin-left: 8px;
+      padding: 12px 16px; font-size: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--muted);
+      background: transparent; color: var(--fg);
+      cursor: pointer;
+    }
+    #status { color: var(--muted); font-size: 13px; margin-top: 14px; }
+    #results {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .word {
+      background: var(--card);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .word.top { background: var(--accent); color: #0f1115; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="tool">
+    <p><a href="../../" class="back">&larr; Hub</a></p>
+    <h1>Wordle Helper 🟩</h1>
+
+    <label>Greens — letter in exact position</label>
+    <div class="slots greens" id="greens" data-kind="green">
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Green slot 1" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Green slot 2" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Green slot 3" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Green slot 4" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Green slot 5" />
+    </div>
+
+    <label>Yellows — letter in word, but NOT this position</label>
+    <div class="slots yellows" id="yellows" data-kind="yellow">
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 1" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 2" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 3" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 4" />
+      <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 5" />
+    </div>
+    <div class="hint">Leave a slot empty if there's no yellow there.</div>
+
+    <label for="grays">Grays — letters not in the word</label>
+    <input id="grays" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="souip" />
+
+    <div>
+      <button class="primary" id="go">Suggest</button>
+      <button class="ghost-btn" id="clear">Clear</button>
+    </div>
+
+    <div id="status">Loading word list…</div>
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $("status");
+    const resultsEl = $("results");
+
+    let WORDS = [];
+    try {
+      const res = await fetch("./words.txt", { cache: "force-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      WORDS = text
+        .split(/\s+/)
+        .map((w) => w.trim().toLowerCase())
+        .filter((w) => /^[a-z]{5}$/.test(w));
+      statusEl.textContent = `${WORDS.length.toLocaleString()} words loaded.`;
+    } catch (err) {
+      statusEl.textContent = `Failed to load word list: ${err.message}`;
+    }
+
+    // Letter-frequency scoring favoring distinct common letters.
+    function buildScorer(words) {
+      const freq = new Array(26).fill(0);
+      for (const w of words) {
+        const seen = new Set();
+        for (const ch of w) {
+          if (seen.has(ch)) continue;
+          seen.add(ch);
+          freq[ch.charCodeAt(0) - 97]++;
+        }
+      }
+      return (w) => {
+        const seen = new Set();
+        let s = 0;
+        for (const ch of w) {
+          if (seen.has(ch)) continue;
+          seen.add(ch);
+          s += freq[ch.charCodeAt(0) - 97];
+        }
+        return s;
+      };
+    }
+
+    function readSlots(containerId) {
+      const inputs = $(containerId).querySelectorAll("input");
+      let s = "";
+      inputs.forEach((inp) => {
+        const v = (inp.value || "").toLowerCase();
+        s += /[a-z]/.test(v) ? v : ".";
+      });
+      return s;
+    }
+
+    function suggest() {
+      if (!WORDS.length) return;
+
+      const greens = readSlots("greens");
+      const yellowsRaw = readSlots("yellows");
+      const grays = new Set(
+        [...($("grays").value || "").toLowerCase()].filter((c) => /[a-z]/.test(c))
+      );
+
+      const greenLetters = new Set([...greens].filter((c) => c !== "."));
+      const yellowLetters = new Set(
+        [...yellowsRaw].filter((c) => c !== "." && /[a-z]/.test(c))
+      );
+
+      const matches = WORDS.filter((w) => {
+        // Greens: exact-position match.
+        for (let i = 0; i < 5; i++) {
+          if (greens[i] !== "." && w[i] !== greens[i]) return false;
+        }
+        // Yellows: must be present, and not at the slot they were seen in.
+        for (let i = 0; i < 5; i++) {
+          const y = yellowsRaw[i];
+          if (y !== "." && /[a-z]/.test(y) && w[i] === y) return false;
+        }
+        for (const y of yellowLetters) {
+          if (!w.includes(y)) return false;
+        }
+        // Grays: must not appear, unless the same letter is also green/yellow
+        // (handles duplicate-letter feedback).
+        for (const ch of w) {
+          if (grays.has(ch) && !greenLetters.has(ch) && !yellowLetters.has(ch)) return false;
+        }
+        return true;
+      });
+
+      const scoreFn = buildScorer(WORDS);
+      matches.sort((a, b) => scoreFn(b) - scoreFn(a));
+
+      resultsEl.innerHTML = "";
+      if (!matches.length) {
+        statusEl.textContent = "No matches.";
+        return;
+      }
+      statusEl.textContent =
+        `${matches.length.toLocaleString()} match${matches.length === 1 ? "" : "es"} ` +
+        `(best-first by letter frequency).`;
+
+      const limit = Math.min(matches.length, 200);
+      for (let i = 0; i < limit; i++) {
+        const el = document.createElement("span");
+        el.className = "word" + (i < 5 ? " top" : "");
+        el.textContent = matches[i];
+        resultsEl.appendChild(el);
+      }
+      if (matches.length > limit) {
+        const more = document.createElement("span");
+        more.className = "word";
+        more.textContent = `+${matches.length - limit} more`;
+        resultsEl.appendChild(more);
+      }
+    }
+
+    // Wire up segmented slot inputs: auto-advance on type, backspace to previous.
+    function wireSlots(containerId) {
+      const inputs = [...$(containerId).querySelectorAll("input")];
+      inputs.forEach((inp, i) => {
+        inp.addEventListener("input", (e) => {
+          const v = inp.value.replace(/[^a-zA-Z]/g, "").slice(-1).toLowerCase();
+          inp.value = v;
+          if (v && i < inputs.length - 1) inputs[i + 1].focus();
+        });
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !inp.value && i > 0) {
+            inputs[i - 1].focus();
+            inputs[i - 1].value = "";
+            e.preventDefault();
+          } else if (e.key === "ArrowLeft" && i > 0) {
+            inputs[i - 1].focus(); e.preventDefault();
+          } else if (e.key === "ArrowRight" && i < inputs.length - 1) {
+            inputs[i + 1].focus(); e.preventDefault();
+          } else if (e.key === "Enter") {
+            suggest();
+          }
+        });
+      });
+    }
+    wireSlots("greens");
+    wireSlots("yellows");
+
+    $("go").addEventListener("click", suggest);
+    $("clear").addEventListener("click", () => {
+      $("greens").querySelectorAll("input").forEach((i) => (i.value = ""));
+      $("yellows").querySelectorAll("input").forEach((i) => (i.value = ""));
+      $("grays").value = "";
+      resultsEl.innerHTML = "";
+      statusEl.textContent = `${WORDS.length.toLocaleString()} words loaded.`;
+    });
+    $("grays").addEventListener("keydown", (e) => { if (e.key === "Enter") suggest(); });
+  </script>
+</body>
+</html>
