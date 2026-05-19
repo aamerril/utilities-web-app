@@ -11,6 +11,60 @@
     h2 { margin-top: 24px; font-size: 18px; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
+    .game-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .icon-btn {
+      background: transparent; border: 1px solid var(--muted); color: var(--fg);
+      width: 38px; height: 38px; border-radius: 50%;
+      font-size: 18px; cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Two-column layout for wide screens */
+    @media (min-width: 900px) {
+      .tool { max-width: 1100px; }
+      .game-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      .game-grid .scoreboard { margin-top: 0; }
+      .game-grid .turn-box { margin-top: 0; }
+      .game-grid .log { grid-column: 1 / -1; }
+      .game-grid .new-game-wrap { grid-column: 1 / -1; }
+    }
+
+    /* Edit-scores modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 20px;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal {
+      background: var(--card); border-radius: 16px; padding: 20px;
+      max-width: 420px; width: 100%;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .modal h2 { margin-top: 0; }
+    .edit-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .edit-row .edit-name { flex: 1; font-weight: 600; }
+    .edit-row input[type="number"] {
+      width: 90px; padding: 8px 10px; font-size: 16px;
+      border-radius: 8px; border: 1px solid var(--muted);
+      background: var(--bg); color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      text-align: right;
+    }
+    .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .modal-actions button { flex: 1; margin-top: 0; }
+
     .players-setup { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     .player-row { display: flex; gap: 8px; align-items: center; }
     .player-row input {
@@ -56,6 +110,37 @@
       display: inline-block;
     }
     .score-row .tag { color: var(--muted); font-size: 12px; margin-left: 8px; }
+
+    /* Ton (100+) celebration */
+    @keyframes tonGlow {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 210, 74, 0); transform: scale(1); }
+      30%  { box-shadow: 0 0 24px 6px rgba(255, 210, 74, 0.8); transform: scale(1.03); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 210, 74, 0); transform: scale(1); }
+    }
+    @keyframes tonBadge {
+      0%   { opacity: 0; transform: translate(-50%, 20px) scale(0.4) rotate(-12deg); }
+      30%  { opacity: 1; transform: translate(-50%, -8px) scale(1.2) rotate(-4deg); }
+      70%  { opacity: 1; transform: translate(-50%, -8px) scale(1) rotate(-2deg); }
+      100% { opacity: 0; transform: translate(-50%, -28px) scale(1) rotate(0); }
+    }
+    .score-row.ton { animation: tonGlow 1.2s ease; }
+    .score-row.ton-hold { border-color: #ffd24a; }
+    .score-row .ton-badge {
+      position: absolute;
+      left: 50%; top: 0;
+      transform: translate(-50%, 0);
+      background: linear-gradient(135deg, #ffd24a, #f0a030);
+      color: #0f1115;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      pointer-events: none;
+      animation: tonBadge 1.4s ease forwards;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
 
     /* Gotcha! animation */
     @keyframes shake {
@@ -169,6 +254,80 @@
     }
     .log { margin-top: 16px; color: var(--muted); font-size: 13px; max-height: 160px; overflow-y: auto; }
     .log div { padding: 2px 0; }
+
+    /* Sniper mode */
+    .sniper-targets { color: var(--muted); font-size: 13px; margin-top: 4px; letter-spacing: 0.04em; }
+    .sniper-targets .t {
+      display: inline-block; padding: 2px 8px; margin: 0 3px;
+      border-radius: 999px; background: rgba(255, 210, 74, 0.18);
+      color: #ffd24a; font-weight: 700;
+    }
+    .sniper-targets .t.hit { background: transparent; color: var(--muted); text-decoration: line-through; font-weight: 400; }
+
+    .sniper-board-wrap {
+      position: relative; user-select: none; -webkit-user-select: none;
+      display: flex; flex-direction: column; align-items: center;
+      margin-top: 12px;
+    }
+    .sniper-board {
+      width: 100%; max-width: 600px; aspect-ratio: 1;
+      touch-action: manipulation;
+    }
+    @media (min-width: 900px) {
+      .sniper-board { max-width: 560px; }
+    }
+    .sniper-wedge {
+      fill: #1b1f27; stroke: #0f1115; stroke-width: 0.4;
+      cursor: pointer; transition: fill 0.1s;
+    }
+    .sniper-wedge.alt { fill: #232831; }
+    .sniper-wedge.target { fill: #ffd24a; }
+    .sniper-wedge.target.alt { fill: #f0a030; }
+    .sniper-wedge.target.done { fill: #2a3140; }
+    .sniper-wedge.target.done.alt { fill: #2a3140; }
+    .sniper-wedge:hover { filter: brightness(1.2); }
+    .sniper-wedge.flash-hit { animation: wedgeHit 0.6s ease; }
+    .sniper-wedge.flash-miss { animation: wedgeMiss 0.5s ease; }
+    @keyframes wedgeHit {
+      0%   { fill: #ffd24a; }
+      30%  { fill: #6ee07f; }
+      100% { fill: #ffd24a; }
+    }
+    @keyframes wedgeMiss {
+      0%, 100% { transform: translate(0,0); }
+      25% { transform: translate(-2px,0); }
+      75% { transform: translate(2px,0); }
+    }
+    .sniper-num { fill: #e7ecf3; font-size: 9px; font-weight: 700; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+    .sniper-num.target { fill: #0f1115; }
+    .sniper-num.target.done { fill: #6b7280; text-decoration: line-through; }
+    .sniper-bull { fill: #1b1f27; stroke: #0f1115; stroke-width: 0.4; cursor: pointer; }
+    .sniper-bull:hover { filter: brightness(1.2); }
+
+    .sniper-feedback {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px; font-weight: 800;
+      pointer-events: none; opacity: 0;
+    }
+    .sniper-feedback.show { animation: sniperFeedback 0.9s ease forwards; }
+    .sniper-feedback.hit { color: #6ee07f; text-shadow: 0 0 24px rgba(110,224,127,0.8); }
+    .sniper-feedback.miss { color: #e06060; text-shadow: 0 0 24px rgba(224,96,96,0.8); }
+    @keyframes sniperFeedback {
+      0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+      30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.4); }
+      70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -100%) scale(1); }
+    }
+
+    /* Target count chooser modal */
+    .count-options { display: flex; gap: 10px; margin-top: 12px; }
+    .count-options button {
+      flex: 1; padding: 18px 0; font-size: 22px; font-weight: 700;
+      border-radius: 12px; border: 2px solid var(--muted); background: var(--card); color: var(--fg);
+      cursor: pointer;
+    }
+    .count-options button:hover { border-color: var(--accent); color: var(--accent); }
   </style>
 </head>
 <body>
@@ -194,6 +353,13 @@
             <div class="g-desc">Start at 0, count up to exactly 301. Land on another player's score to reset them to 0.</div>
           </div>
         </label>
+        <label>
+          <input type="radio" name="gameType" value="sniper" />
+          <div>
+            <div class="g-name">Sniper</div>
+            <div class="g-desc">Hit the highlighted numbers on the board. First player to hit them all wins.</div>
+          </div>
+        </label>
       </div>
 
       <h2>Players <span id="playerCount" class="hint"></span></h2>
@@ -206,10 +372,15 @@
 
     <!-- GAME -->
     <section id="game" hidden>
-      <div id="winner" class="winner" hidden></div>
-      <div class="scoreboard" id="scoreboard"></div>
+      <div class="game-header">
+        <div id="winner" class="winner" hidden></div>
+        <div style="flex:1"></div>
+        <button class="icon-btn" id="editScores" title="Edit scores manually" aria-label="Edit scores">✏️</button>
+      </div>
+      <div class="game-grid">
+        <div class="scoreboard" id="scoreboard"></div>
 
-      <div class="turn-box" id="turnBox">
+        <div class="turn-box" id="turnBox">
         <div class="turn-header">
           <span class="who" id="currentTurnLabel"></span>
           <span class="target" id="currentTurnScore"></span>
@@ -240,10 +411,59 @@
         </div>
       </div>
 
+      <!-- SNIPER TURN BOX -->
+      <div class="turn-box" id="sniperBox" hidden>
+        <div class="turn-header">
+          <span class="who" id="sniperTurnLabel"></span>
+          <span class="target" id="sniperTurnDarts"></span>
+        </div>
+        <div class="sniper-targets" id="sniperTargetsLine"></div>
+        <div class="sniper-board-wrap">
+          <svg class="sniper-board" id="sniperBoard" viewBox="-100 -100 200 200" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="sniper-feedback" id="sniperFeedback"></div>
+        </div>
+        <div class="turn-actions">
+          <button class="secondary" id="sniperUndo">Undo last throw</button>
+          <button class="secondary" id="sniperEndTurn">End turn</button>
+        </div>
+      </div>
+
       <div class="log" id="log"></div>
 
-      <button class="danger" id="newGame">New game</button>
+      <div class="new-game-wrap">
+        <button class="danger" id="newGame">New game</button>
+      </div>
+      </div>
     </section>
+
+    <!-- EDIT SCORES MODAL -->
+    <div id="editModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2>Edit scores</h2>
+        <div class="hint">Manually adjust any score. Useful for fixing mistakes.</div>
+        <div id="editRows" style="margin-top: 12px;"></div>
+        <div class="modal-actions">
+          <button class="secondary" id="editCancel">Cancel</button>
+          <button class="primary" id="editSave">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SNIPER TARGET COUNT MODAL -->
+    <div id="sniperCountModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2>Sniper targets</h2>
+        <div class="hint">How many numbers should each player hit to win?</div>
+        <div class="count-options">
+          <button data-count="3">3</button>
+          <button data-count="5">5</button>
+          <button data-count="10">10</button>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary" id="sniperCountCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module">
@@ -264,12 +484,20 @@
       log: [],
       modifier: 1,                 // 1=single, 2=double, 3=triple (for next number-button press)
       gotIdxs: [],                 // transient: indices just reset by Gotcha (animate this render)
+      tonInfo: null,               // transient: { idx, total, label } for ton animation
+      // Sniper-only
+      targets: [],                 // e.g. [17, 9, 3]
+      sniperDartsThisTurn: 0,      // 0..3
     };
 
     const TARGETS = {
       "301":    { start: 301, target: 0,   direction: -1 },
       "gotcha": { start: 0,   target: 301, direction: +1 },
+      "sniper": { start: 0,   target: 0,   direction: 0  },
     };
+
+    // Standard dartboard wedge order, starting at top, clockwise.
+    const DARTBOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
     // ---------- Setup UI ----------
     function renderSetup() {
@@ -310,11 +538,17 @@
     });
 
     $("startGame").addEventListener("click", () => {
-      const cfg = TARGETS[state.gameType];
+      // Validate / normalize player names first.
       state.players.forEach((p, i) => {
         if (!p.name.trim()) p.name = `Player ${i + 1}`;
-        p.score = cfg.start;
       });
+      if (state.gameType === "sniper") {
+        // Show count chooser; actual game start happens after pick.
+        $("sniperCountModal").hidden = false;
+        return;
+      }
+      const cfg = TARGETS[state.gameType];
+      state.players.forEach((p) => { p.score = cfg.start; });
       state.currentIdx = 0;
       state.winnerIdx = null;
       state.turnDarts = [];
@@ -323,6 +557,39 @@
       state.phase = "playing";
       render();
     });
+
+    // Sniper count chooser handlers
+    document.querySelectorAll("#sniperCountModal .count-options button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const n = Number(btn.dataset.count);
+        startSniperGame(n);
+        $("sniperCountModal").hidden = true;
+      });
+    });
+    $("sniperCountCancel").addEventListener("click", () => { $("sniperCountModal").hidden = true; });
+    $("sniperCountModal").addEventListener("click", (e) => {
+      if (e.target.id === "sniperCountModal") $("sniperCountModal").hidden = true;
+    });
+
+    function startSniperGame(count) {
+      // Pick `count` unique numbers from 1..20.
+      const pool = Array.from({ length: 20 }, (_, i) => i + 1);
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      state.targets = pool.slice(0, count).sort((a, b) => a - b);
+      state.players.forEach((p) => { p.score = 0; p.hits = []; });
+      state.currentIdx = 0;
+      state.winnerIdx = null;
+      state.turnDarts = [];
+      state.sniperDartsThisTurn = 0;
+      state.history = [];
+      state.log = [`Sniper targets: ${state.targets.join(", ")}`];
+      state.phase = "playing";
+      buildSniperBoard();
+      render();
+    }
 
     // ---------- Keypad ----------
     function buildKeypad() {
@@ -370,6 +637,7 @@
         turnDarts: state.turnDarts,
         log: state.log,
         phase: state.phase,
+        sniperDartsThisTurn: state.sniperDartsThisTurn,
       }));
     }
 
@@ -380,6 +648,29 @@
       state.turnDarts = snap.turnDarts;
       state.log = snap.log;
       state.phase = snap.phase;
+      if (snap.sniperDartsThisTurn !== undefined) state.sniperDartsThisTurn = snap.sniperDartsThisTurn;
+    }
+
+    function checkGotcha(label) {
+      // Returns true if at least one player was Gotcha'd.
+      const player = state.players[state.currentIdx];
+      const got = [];
+      const gotEntries = [];
+      for (let i = 0; i < state.players.length; i++) {
+        if (i === state.currentIdx) continue;
+        const other = state.players[i];
+        if (other.score > 0 && other.score === player.score) {
+          gotEntries.push({ idx: i, oldScore: other.score });
+          other.score = 0;
+          got.push(other.name);
+        }
+      }
+      if (got.length) {
+        logTurn(`  ⚡ GOTCHA! Reset: ${got.join(", ")}`);
+        state.gotIdxs = gotEntries;
+        return true;
+      }
+      return false;
     }
 
     function throwDart(score, label) {
@@ -403,6 +694,7 @@
           logTurn(`${player.name} threw ${label} → WINS!`);
           state.winnerIdx = state.currentIdx;
           state.phase = "ended";
+          checkTon();
           setModifier(1);
           render();
           return;
@@ -423,6 +715,7 @@
           logTurn(`${player.name} threw ${label} → WINS!`);
           state.winnerIdx = state.currentIdx;
           state.phase = "ended";
+          checkTon();
           setModifier(1);
           render();
           return;
@@ -430,28 +723,14 @@
           const over = next - cfg.target;
           player.score = cfg.target - over;
           logTurn(`${player.name} threw ${label} → BUST (over by ${over}, dropped to ${player.score})`);
+          // Bust can still trigger a Gotcha if landing on another player's score.
+          checkGotcha(label);
           endTurn();
           return;
         } else {
           player.score = next;
           logTurn(`${player.name} threw ${label} → ${player.score}`);
-
-          // Gotcha rule: check after each dart.
-          const got = [];
-          const gotEntries = [];
-          for (let i = 0; i < state.players.length; i++) {
-            if (i === state.currentIdx) continue;
-            const other = state.players[i];
-            if (other.score > 0 && other.score === player.score) {
-              gotEntries.push({ idx: i, oldScore: other.score });
-              other.score = 0;
-              got.push(other.name);
-            }
-          }
-          if (got.length) {
-            logTurn(`  ⚡ GOTCHA! Reset: ${got.join(", ")}`);
-            state.gotIdxs = gotEntries;
-          }
+          checkGotcha(label);
         }
       }
 
@@ -465,7 +744,21 @@
       }
     }
 
+    function checkTon() {
+      const total = state.turnDarts.reduce((a, b) => a + b, 0);
+      if (total < 100) return;
+      let label = "TON!";
+      if (total === 180) label = "180!";
+      else if (total >= 150) label = `HIGH TON ${total}`;
+      else if (total >= 100) label = `TON ${total}`;
+      state.tonInfo = { idx: state.currentIdx, total, label };
+      state.tonHold = { idx: state.currentIdx, until: Date.now() + 3000 };
+      if (state.tonHoldTimer) clearTimeout(state.tonHoldTimer);
+      state.tonHoldTimer = setTimeout(() => { state.tonHold = null; render(); }, 3000);
+    }
+
     function endTurn() {
+      checkTon();
       state.currentIdx = (state.currentIdx + 1) % state.players.length;
       state.turnDarts = [];
       setModifier(1);
@@ -496,6 +789,189 @@
       render();
     });
 
+    // ---------- Sniper mode ----------
+    function buildSniperBoard() {
+      const svg = $("sniperBoard");
+      svg.innerHTML = "";
+      const R = 90;        // outer wedge radius
+      const RBull = 8;     // bullseye radius
+      const RText = 78;    // label radius
+      const wedgeAngle = 2 * Math.PI / 20;
+      // i=0 is the wedge centered at top (angle 0 = -π/2 in math coords).
+      for (let i = 0; i < 20; i++) {
+        const num = DARTBOARD_ORDER[i];
+        const centerAngle = i * wedgeAngle - Math.PI / 2;
+        const a1 = centerAngle - wedgeAngle / 2;
+        const a2 = centerAngle + wedgeAngle / 2;
+        const x1 = R * Math.cos(a1), y1 = R * Math.sin(a1);
+        const x2 = R * Math.cos(a2), y2 = R * Math.sin(a2);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M 0 0 L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`);
+        path.setAttribute("class", "sniper-wedge" + (i % 2 ? " alt" : ""));
+        path.dataset.num = String(num);
+        path.dataset.wedgeIdx = String(i);
+        path.addEventListener("click", () => onSniperWedgeClick(num));
+        svg.appendChild(path);
+
+        const tx = RText * Math.cos(centerAngle);
+        const ty = RText * Math.sin(centerAngle);
+        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        txt.setAttribute("x", tx.toFixed(2));
+        txt.setAttribute("y", ty.toFixed(2));
+        txt.setAttribute("class", "sniper-num");
+        txt.dataset.numLabel = String(num);
+        txt.textContent = String(num);
+        txt.style.pointerEvents = "none";
+        svg.appendChild(txt);
+      }
+      // Bullseye (counts as miss in sniper)
+      const bull = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      bull.setAttribute("cx", "0");
+      bull.setAttribute("cy", "0");
+      bull.setAttribute("r", String(RBull));
+      bull.setAttribute("class", "sniper-bull");
+      bull.addEventListener("click", () => onSniperWedgeClick(null));
+      svg.appendChild(bull);
+    }
+
+    function paintSniperBoard() {
+      const player = state.players[state.currentIdx];
+      const hits = (player && player.hits) || [];
+      const wedges = $("sniperBoard").querySelectorAll(".sniper-wedge");
+      wedges.forEach((w) => {
+        const num = Number(w.dataset.num);
+        const isTarget = state.targets.includes(num);
+        const isDone = isTarget && hits.includes(num);
+        const alt = w.classList.contains("alt");
+        w.classList.remove("target", "done");
+        if (isTarget) w.classList.add("target");
+        if (isDone) w.classList.add("done");
+      });
+      const labels = $("sniperBoard").querySelectorAll(".sniper-num");
+      labels.forEach((l) => {
+        const num = Number(l.dataset.numLabel);
+        const isTarget = state.targets.includes(num);
+        const isDone = isTarget && hits.includes(num);
+        l.classList.toggle("target", isTarget);
+        l.classList.toggle("done", isDone);
+      });
+    }
+
+    function onSniperWedgeClick(num) {
+      if (state.phase !== "playing" || state.gameType !== "sniper") return;
+      if (state.sniperDartsThisTurn >= 3) return;
+      state.history.push(snapshot());
+      const player = state.players[state.currentIdx];
+      if (!player.hits) player.hits = [];
+      const isHit = num !== null && state.targets.includes(num) && !player.hits.includes(num);
+      state.sniperDartsThisTurn += 1;
+      const wedgeEl = num !== null ? $("sniperBoard").querySelector(`.sniper-wedge[data-num="${num}"]`) : null;
+      if (isHit) {
+        player.hits.push(num);
+        logTurn(`${player.name} hit ${num} ✓`);
+        showSniperFeedback("HIT!", true);
+        if (wedgeEl) flashWedge(wedgeEl, true);
+        // Win check
+        const allHit = state.targets.every((t) => player.hits.includes(t));
+        if (allHit) {
+          state.winnerIdx = state.currentIdx;
+          state.phase = "ended";
+          render();
+          return;
+        }
+      } else {
+        const label = num === null ? "bull" : `${num}`;
+        logTurn(`${player.name} missed (${label})`);
+        showSniperFeedback("MISS", false);
+        if (wedgeEl) flashWedge(wedgeEl, false);
+      }
+      if (state.sniperDartsThisTurn >= 3) {
+        endSniperTurn();
+      } else {
+        render();
+      }
+    }
+
+    function flashWedge(el, isHit) {
+      const cls = isHit ? "flash-hit" : "flash-miss";
+      el.classList.remove(cls);
+      // Force reflow so animation can restart.
+      void el.getBoundingClientRect();
+      el.classList.add(cls);
+      setTimeout(() => el.classList.remove(cls), 650);
+    }
+
+    function showSniperFeedback(text, isHit) {
+      const el = $("sniperFeedback");
+      el.textContent = text;
+      el.classList.remove("show", "hit", "miss");
+      void el.getBoundingClientRect();
+      el.classList.add("show", isHit ? "hit" : "miss");
+      setTimeout(() => el.classList.remove("show", "hit", "miss"), 900);
+    }
+
+    function endSniperTurn() {
+      state.currentIdx = (state.currentIdx + 1) % state.players.length;
+      state.sniperDartsThisTurn = 0;
+      render();
+    }
+
+    $("sniperUndo").addEventListener("click", () => {
+      if (!state.history.length) return;
+      restore(state.history.pop());
+      render();
+    });
+    $("sniperEndTurn").addEventListener("click", () => {
+      if (state.phase !== "playing") return;
+      if (!state.sniperDartsThisTurn) {
+        logTurn(`${state.players[state.currentIdx].name} skipped turn`);
+      }
+      endSniperTurn();
+    });
+
+    // ---------- Edit scores modal ----------
+    function openEditModal() {
+      const wrap = $("editRows");
+      wrap.innerHTML = "";
+      state.players.forEach((p, i) => {
+        const row = document.createElement("div");
+        row.className = "edit-row";
+        row.innerHTML = `
+          <span class="edit-name"></span>
+          <input type="number" inputmode="numeric" data-idx="${i}" value="${p.score}" />
+        `;
+        row.querySelector(".edit-name").textContent = p.name;
+        wrap.appendChild(row);
+      });
+      $("editModal").hidden = false;
+    }
+    function closeEditModal() { $("editModal").hidden = true; }
+
+    $("editScores").addEventListener("click", openEditModal);
+    $("editCancel").addEventListener("click", closeEditModal);
+    $("editSave").addEventListener("click", () => {
+      state.history.push(snapshot());
+      const inputs = $("editRows").querySelectorAll("input");
+      inputs.forEach((inp) => {
+        const idx = Number(inp.dataset.idx);
+        const v = parseInt(inp.value, 10);
+        if (Number.isFinite(v) && v >= 0) state.players[idx].score = v;
+      });
+      logTurn(`✏️ Scores manually edited`);
+      // If a player was on the win-target after edit, treat it as a win.
+      const cfg = TARGETS[state.gameType];
+      const winnerIdx = state.players.findIndex((p) => p.score === cfg.target);
+      if (winnerIdx >= 0) {
+        state.winnerIdx = winnerIdx;
+        state.phase = "ended";
+      }
+      closeEditModal();
+      render();
+    });
+    $("editModal").addEventListener("click", (e) => {
+      if (e.target.id === "editModal") closeEditModal();
+    });
+
     // ---------- Render ----------
     function render() {
       $("setup").hidden = state.phase !== "setup";
@@ -506,19 +982,37 @@
         return;
       }
 
+      const isSniper = state.gameType === "sniper";
+      $("editScores").style.display = isSniper ? "none" : "";
+
       // Scoreboard
       const board = $("scoreboard");
       board.innerHTML = "";
       const gotThisRender = state.gotIdxs;
       state.gotIdxs = []; // consume
+      const tonThisRender = state.tonInfo;
+      state.tonInfo = null; // consume
       state.players.forEach((p, i) => {
         const row = document.createElement("div");
         const gotEntry = gotThisRender.find((g) => g.idx === i);
         const isGot = !!gotEntry;
+        const isTon = tonThisRender && tonThisRender.idx === i;
         row.className = "score-row"
           + (i === state.currentIdx && state.phase === "playing" ? " current" : "")
-          + (isGot ? " got" : "");
+          + (isGot ? " got" : "")
+          + (isTon ? " ton" : "")
+          + (state.tonHold && state.tonHold.idx === i && state.tonHold.until > Date.now() ? " ton-hold" : "");
         const tag = (state.phase === "ended" && i === state.winnerIdx) ? ' <span class="tag">🏆 winner</span>' : "";
+        if (isSniper) {
+          const hits = p.hits || [];
+          const targetsHtml = state.targets.map((t) => {
+            const done = hits.includes(t);
+            return `<span class="t${done ? " hit" : ""}">${t}</span>`;
+          }).join("");
+          row.innerHTML = `<div class="name">${escapeHtml(p.name)}${tag}</div><div class="sniper-targets" style="margin:0">${targetsHtml}</div>`;
+          board.appendChild(row);
+          return;
+        }
         // When got, render the old score in the falling element; new 0 flashes in via reset-flash.
         const displayedScore = isGot ? gotEntry.oldScore : p.score;
         row.innerHTML = `<div class="name">${escapeHtml(p.name)}${tag}</div><div class="score">${displayedScore}</div>`;
@@ -528,15 +1022,37 @@
           flash.textContent = "0";
           row.appendChild(flash);
         }
+        if (isTon) {
+          const badge = document.createElement("span");
+          badge.className = "ton-badge";
+          badge.textContent = tonThisRender.label;
+          row.appendChild(badge);
+        }
         board.appendChild(row);
         if (isGot) spawnParticles(row);
+        if (isTon) spawnTonSparkles(row);
       });
 
       if (state.phase === "ended") {
         $("turnBox").hidden = true;
+        $("sniperBox").hidden = true;
         $("winner").hidden = false;
         $("winner").textContent = `🏆 ${state.players[state.winnerIdx].name} wins!`;
+      } else if (isSniper) {
+        $("turnBox").hidden = true;
+        $("sniperBox").hidden = false;
+        $("winner").hidden = true;
+        const player = state.players[state.currentIdx];
+        $("sniperTurnLabel").textContent = `${player.name}'s turn`;
+        $("sniperTurnDarts").textContent = `dart ${Math.min(state.sniperDartsThisTurn + 1, 3)} / 3`;
+        const remaining = state.targets.filter((t) => !(player.hits || []).includes(t));
+        $("sniperTargetsLine").innerHTML = `Targets remaining: ` + state.targets.map((t) => {
+          const done = (player.hits || []).includes(t);
+          return `<span class="t${done ? " hit" : ""}">${t}</span>`;
+        }).join("");
+        paintSniperBoard();
       } else {
+        $("sniperBox").hidden = true;
         $("turnBox").hidden = false;
         $("winner").hidden = true;
         const player = state.players[state.currentIdx];
@@ -590,6 +1106,28 @@
         p.style.setProperty("--dx", Math.cos(angle) * dist + "px");
         p.style.setProperty("--dy", Math.sin(angle) * dist + "px");
         p.style.width = p.style.height = (5 + Math.random() * 6) + "px";
+        row.appendChild(p);
+        setTimeout(() => p.remove(), 900);
+      }
+    }
+
+    function spawnTonSparkles(row) {
+      const colors = ["#ffd24a", "#f0a030", "#fff5a0", "#ffb84a"];
+      const count = 18;
+      const rect = row.getBoundingClientRect();
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement("span");
+        p.className = "particle";
+        // Spread along the top edge of the row.
+        const startX = (rect.width * i) / count;
+        p.style.left = startX + "px";
+        p.style.top = "10px";
+        p.style.background = colors[i % colors.length];
+        const angle = -Math.PI / 2 + (Math.random() * 0.8 - 0.4);
+        const dist = 40 + Math.random() * 50;
+        p.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        p.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+        p.style.width = p.style.height = (4 + Math.random() * 6) + "px";
         row.appendChild(p);
         setTimeout(() => p.remove(), 900);
       }
