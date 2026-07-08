@@ -301,8 +301,24 @@
     .sniper-num { fill: #e7ecf3; font-size: 9px; font-weight: 700; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
     .sniper-num.target { fill: #0f1115; }
     .sniper-num.target.done { fill: #6b7280; text-decoration: line-through; }
-    .sniper-bull { fill: #1b1f27; stroke: #0f1115; stroke-width: 0.4; cursor: pointer; }
-    .sniper-bull:hover { filter: brightness(1.2); }
+    /* Bullseye: outer green ring + inner red center, styled as a wildcard pickup. */
+    .sniper-bull-outer { fill: #2d8f4e; stroke: #0f1115; stroke-width: 0.5; cursor: pointer; }
+    .sniper-bull-inner { fill: #d94141; stroke: #0f1115; stroke-width: 0.5; cursor: pointer; pointer-events: none; }
+    .sniper-bull-star { fill: #fff; font-size: 10px; font-weight: 900; pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+    .sniper-bull-group:hover .sniper-bull-outer { fill: #37a75c; filter: drop-shadow(0 0 6px #ffd24a); }
+    .sniper-bull-group:hover .sniper-bull-inner { fill: #e85555; }
+    .sniper-bull-group.flash-hit .sniper-bull-outer { animation: wedgeHit 0.6s ease; }
+    .sniper-bull-group.flash-miss .sniper-bull-outer { animation: wedgeMiss 0.5s ease; }
+
+    /* Wildcard target chooser buttons */
+    .wildcard-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; margin-top: 12px; }
+    .wildcard-options button {
+      padding: 14px 8px; font-size: 20px; font-weight: 700;
+      border-radius: 10px; border: 1px solid var(--muted);
+      background: var(--bg); color: var(--fg); cursor: pointer;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .wildcard-options button:hover { border-color: var(--accent); color: var(--accent); }
 
     .sniper-feedback {
       position: absolute; top: 50%; left: 50%;
@@ -343,21 +359,21 @@
           <input type="radio" name="gameType" value="301" checked />
           <div>
             <div class="g-name">301 (any in / any out)</div>
-            <div class="g-desc">Start at 301, count down to exactly 0. Go below and you bust, dropping to the amount you went over.</div>
+            <div class="g-desc">Start at 301, count down to exactly 0. Go below and you bust — your score climbs back up by the amount you went over.</div>
           </div>
         </label>
         <label>
           <input type="radio" name="gameType" value="gotcha" />
           <div>
             <div class="g-name">Gotcha</div>
-            <div class="g-desc">Start at 0, count up to exactly 301. Land on another player's score to reset them to 0.</div>
+            <div class="g-desc">Start at 0, count up to exactly 301. Land on another player's score (including via a bust) to reset them to 0. Going over 301 drops your score by the amount you went over.</div>
           </div>
         </label>
         <label>
           <input type="radio" name="gameType" value="sniper" />
           <div>
             <div class="g-name">Sniper</div>
-            <div class="g-desc">Hit the highlighted numbers on the board. First player to hit them all wins.</div>
+            <div class="g-desc">Hit the highlighted numbers on the board. First player to hit them all wins. Bullseye is a wildcard — pick any remaining target.</div>
           </div>
         </label>
       </div>
@@ -461,6 +477,18 @@
         </div>
         <div class="modal-actions">
           <button class="secondary" id="sniperCountCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SNIPER BULLSEYE WILDCARD MODAL -->
+    <div id="sniperBullModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2>Bullseye! 🎯</h2>
+        <div class="hint" id="sniperBullHint">Wildcard — pick any of your remaining targets to score as a hit.</div>
+        <div class="wildcard-options" id="sniperBullOptions"></div>
+        <div class="modal-actions">
+          <button class="secondary" id="sniperBullCancel">Cancel (don't use)</button>
         </div>
       </div>
     </div>
@@ -699,9 +727,13 @@
           render();
           return;
         } else if (next < 0) {
+          // Bust: went below 0. Move the player's CURRENT score UP by the
+          // amount they went over (away from the target of 0), matching
+          // the Gotcha bust rule.
           const over = Math.abs(next);
-          player.score = over;
-          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, dropped to ${over})`);
+          const from = player.score;
+          player.score = from + over;
+          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, ${from} → ${player.score})`);
           endTurn();
           return;
         } else {
@@ -720,10 +752,14 @@
           render();
           return;
         } else if (next > cfg.target) {
+          // Bust: drop the player's CURRENT score by the amount they went
+          // over (not from 301). Example: at 280, throw double 20 (40) →
+          // over by 19 → new score 261. A bust can still land on another
+          // player's score and trigger a Gotcha.
           const over = next - cfg.target;
-          player.score = cfg.target - over;
-          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, dropped to ${player.score})`);
-          // Bust can still trigger a Gotcha if landing on another player's score.
+          const from = player.score;
+          player.score = Math.max(0, from - over);
+          logTurn(`${player.name} threw ${label} → BUST (over by ${over}, ${from} → ${player.score})`);
           checkGotcha(label);
           endTurn();
           return;
@@ -794,7 +830,8 @@
       const svg = $("sniperBoard");
       svg.innerHTML = "";
       const R = 90;        // outer wedge radius
-      const RBull = 8;     // bullseye radius
+      const RBullOuter = 14; // outer bullseye ring radius (larger, wildcard)
+      const RBullInner = 7;  // inner bullseye radius
       const RText = 78;    // label radius
       const wedgeAngle = 2 * Math.PI / 20;
       // i=0 is the wedge centered at top (angle 0 = -π/2 in math coords).
@@ -824,14 +861,31 @@
         txt.style.pointerEvents = "none";
         svg.appendChild(txt);
       }
-      // Bullseye (counts as miss in sniper)
-      const bull = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      bull.setAttribute("cx", "0");
-      bull.setAttribute("cy", "0");
-      bull.setAttribute("r", String(RBull));
-      bull.setAttribute("class", "sniper-bull");
-      bull.addEventListener("click", () => onSniperWedgeClick(null));
-      svg.appendChild(bull);
+      // Bullseye — wildcard: outer green ring + inner red center (real dartboard look).
+      const bullGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      bullGroup.setAttribute("class", "sniper-bull-group");
+      bullGroup.setAttribute("id", "sniperBullGroup");
+      bullGroup.style.cursor = "pointer";
+      bullGroup.addEventListener("click", onSniperBullClick);
+      const bullOuter = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      bullOuter.setAttribute("cx", "0");
+      bullOuter.setAttribute("cy", "0");
+      bullOuter.setAttribute("r", String(RBullOuter));
+      bullOuter.setAttribute("class", "sniper-bull-outer");
+      bullGroup.appendChild(bullOuter);
+      const bullInner = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      bullInner.setAttribute("cx", "0");
+      bullInner.setAttribute("cy", "0");
+      bullInner.setAttribute("r", String(RBullInner));
+      bullInner.setAttribute("class", "sniper-bull-inner");
+      bullGroup.appendChild(bullInner);
+      const bullStar = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      bullStar.setAttribute("x", "0");
+      bullStar.setAttribute("y", "0");
+      bullStar.setAttribute("class", "sniper-bull-star");
+      bullStar.textContent = "★";
+      bullGroup.appendChild(bullStar);
+      svg.appendChild(bullGroup);
     }
 
     function paintSniperBoard() {
@@ -863,9 +917,9 @@
       state.history.push(snapshot());
       const player = state.players[state.currentIdx];
       if (!player.hits) player.hits = [];
-      const isHit = num !== null && state.targets.includes(num) && !player.hits.includes(num);
+      const isHit = state.targets.includes(num) && !player.hits.includes(num);
       state.sniperDartsThisTurn += 1;
-      const wedgeEl = num !== null ? $("sniperBoard").querySelector(`.sniper-wedge[data-num="${num}"]`) : null;
+      const wedgeEl = $("sniperBoard").querySelector(`.sniper-wedge[data-num="${num}"]`);
       if (isHit) {
         player.hits.push(num);
         logTurn(`${player.name} hit ${num} ✓`);
@@ -880,10 +934,68 @@
           return;
         }
       } else {
-        const label = num === null ? "bull" : `${num}`;
-        logTurn(`${player.name} missed (${label})`);
+        logTurn(`${player.name} missed (${num})`);
         showSniperFeedback("MISS", false);
         if (wedgeEl) flashWedge(wedgeEl, false);
+      }
+      if (state.sniperDartsThisTurn >= 3) {
+        endSniperTurn();
+      } else {
+        render();
+      }
+    }
+
+    // Bullseye: wildcard. Open a chooser listing this player's remaining
+    // (unhit) targets. Cancel = no dart consumed. Pick = counts as a hit
+    // on the chosen target.
+    function onSniperBullClick() {
+      if (state.phase !== "playing" || state.gameType !== "sniper") return;
+      if (state.sniperDartsThisTurn >= 3) return;
+      const player = state.players[state.currentIdx];
+      const hits = player.hits || [];
+      const remaining = state.targets.filter((t) => !hits.includes(t));
+      const wrap = $("sniperBullOptions");
+      wrap.innerHTML = "";
+      if (!remaining.length) {
+        // Shouldn't be reachable (player would have won), but be defensive.
+        return;
+      }
+      $("sniperBullHint").textContent =
+        `Wildcard for ${player.name}! Pick any remaining target to score as a hit.`;
+      remaining.forEach((t) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = String(t);
+        btn.addEventListener("click", () => {
+          $("sniperBullModal").hidden = true;
+          applyBullWildcard(t);
+        });
+        wrap.appendChild(btn);
+      });
+      $("sniperBullModal").hidden = false;
+    }
+
+    function applyBullWildcard(chosen) {
+      const player = state.players[state.currentIdx];
+      if (!player.hits) player.hits = [];
+      // Guard against stale/duplicate hits.
+      if (player.hits.includes(chosen) || !state.targets.includes(chosen)) return;
+      if (state.sniperDartsThisTurn >= 3) return;
+      state.history.push(snapshot());
+      state.sniperDartsThisTurn += 1;
+      player.hits.push(chosen);
+      logTurn(`${player.name} bullseye → wildcard hit ${chosen} ★`);
+      showSniperFeedback("BULLSEYE!", true);
+      const bullGroup = $("sniperBullGroup");
+      if (bullGroup) flashWedge(bullGroup, true);
+      const wedgeEl = $("sniperBoard").querySelector(`.sniper-wedge[data-num="${chosen}"]`);
+      if (wedgeEl) flashWedge(wedgeEl, true);
+      const allHit = state.targets.every((t) => player.hits.includes(t));
+      if (allHit) {
+        state.winnerIdx = state.currentIdx;
+        state.phase = "ended";
+        render();
+        return;
       }
       if (state.sniperDartsThisTurn >= 3) {
         endSniperTurn();
@@ -927,6 +1039,12 @@
         logTurn(`${state.players[state.currentIdx].name} skipped turn`);
       }
       endSniperTurn();
+    });
+
+    // Wildcard modal dismissal (cancel: no dart consumed).
+    $("sniperBullCancel").addEventListener("click", () => { $("sniperBullModal").hidden = true; });
+    $("sniperBullModal").addEventListener("click", (e) => {
+      if (e.target.id === "sniperBullModal") $("sniperBullModal").hidden = true;
     });
 
     // ---------- Edit scores modal ----------

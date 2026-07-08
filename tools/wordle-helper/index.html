@@ -109,7 +109,7 @@
       <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 4" />
       <input type="text" maxlength="1" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder=" " aria-label="Yellow slot 5" />
     </div>
-    <div class="hint">Leave a slot empty if there's no yellow there.</div>
+    <div class="hint">Leave a slot empty if there's no yellow there. Tip: press <b>Space</b> to skip to the next slot, <b>Enter</b> to suggest.</div>
 
     <label for="grays">Grays — letters not in the word</label>
     <input id="grays" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="souip" />
@@ -128,16 +128,29 @@
     const statusEl = $("status");
     const resultsEl = $("results");
 
-    let WORDS = [];
-    try {
-      const res = await fetch("./words.txt", { cache: "force-cache" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let ANSWERS = [];   // Official Wordle answers — shown in blue.
+    let EXTRAS = [];    // Other valid 5-letter English words — shown in gray.
+    async function loadList(path) {
+      const res = await fetch(path, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
       const text = await res.text();
-      WORDS = text
+      return text
         .split(/\s+/)
         .map((w) => w.trim().toLowerCase())
         .filter((w) => /^[a-z]{5}$/.test(w));
-      statusEl.textContent = `${WORDS.length.toLocaleString()} words loaded.`;
+    }
+    try {
+      const [answers, extras] = await Promise.all([
+        loadList("./words.txt"),
+        loadList("./guesses.txt").catch(() => []),
+      ]);
+      ANSWERS = answers;
+      EXTRAS = extras;
+      const total = ANSWERS.length + EXTRAS.length;
+      statusEl.textContent =
+        `${ANSWERS.length.toLocaleString()} Wordle answers + ` +
+        `${EXTRAS.length.toLocaleString()} other valid words ` +
+        `(${total.toLocaleString()} total).`;
     } catch (err) {
       statusEl.textContent = `Failed to load word list: ${err.message}`;
     }
@@ -175,21 +188,8 @@
       return s;
     }
 
-    function suggest() {
-      if (!WORDS.length) return;
-
-      const greens = readSlots("greens");
-      const yellowsRaw = readSlots("yellows");
-      const grays = new Set(
-        [...($("grays").value || "").toLowerCase()].filter((c) => /[a-z]/.test(c))
-      );
-
-      const greenLetters = new Set([...greens].filter((c) => c !== "."));
-      const yellowLetters = new Set(
-        [...yellowsRaw].filter((c) => c !== "." && /[a-z]/.test(c))
-      );
-
-      const matches = WORDS.filter((w) => {
+    function filterWords(words, greens, yellowsRaw, greenLetters, yellowLetters, grays) {
+      return words.filter((w) => {
         // Greens: exact-position match.
         for (let i = 0; i < 5; i++) {
           if (greens[i] !== "." && w[i] !== greens[i]) return false;
@@ -209,31 +209,94 @@
         }
         return true;
       });
+    }
 
-      const scoreFn = buildScorer(WORDS);
-      matches.sort((a, b) => scoreFn(b) - scoreFn(a));
+    function suggest() {
+      if (!ANSWERS.length && !EXTRAS.length) return;
+
+      const greens = readSlots("greens");
+      const yellowsRaw = readSlots("yellows");
+      const grays = new Set(
+        [...($("grays").value || "").toLowerCase()].filter((c) => /[a-z]/.test(c))
+      );
+
+      const greenLetters = new Set([...greens].filter((c) => c !== "."));
+      const yellowLetters = new Set(
+        [...yellowsRaw].filter((c) => c !== "." && /[a-z]/.test(c))
+      );
+
+      const answerMatches = filterWords(ANSWERS, greens, yellowsRaw, greenLetters, yellowLetters, grays);
+      const extraMatches = filterWords(EXTRAS, greens, yellowsRaw, greenLetters, yellowLetters, grays);
+
+      // Score against the union so ranking reflects overall letter usefulness.
+      const scoreFn = buildScorer([...ANSWERS, ...EXTRAS]);
+      answerMatches.sort((a, b) => scoreFn(b) - scoreFn(a));
+      extraMatches.sort((a, b) => scoreFn(b) - scoreFn(a));
 
       resultsEl.innerHTML = "";
-      if (!matches.length) {
+      const total = answerMatches.length + extraMatches.length;
+      if (!total) {
         statusEl.textContent = "No matches.";
         return;
       }
       statusEl.textContent =
-        `${matches.length.toLocaleString()} match${matches.length === 1 ? "" : "es"} ` +
-        `(best-first by letter frequency).`;
+        `${answerMatches.length.toLocaleString()} Wordle answer` +
+        `${answerMatches.length === 1 ? "" : "s"} · ` +
+        `${extraMatches.length.toLocaleString()} other valid word` +
+        `${extraMatches.length === 1 ? "" : "s"} (best-first by letter frequency).`;
 
-      const limit = Math.min(matches.length, 200);
-      for (let i = 0; i < limit; i++) {
+      const ANSWER_LIMIT = 200;
+      const EXTRA_LIMIT = 200;
+      const shownAnswers = Math.min(answerMatches.length, ANSWER_LIMIT);
+      for (let i = 0; i < shownAnswers; i++) {
         const el = document.createElement("span");
-        el.className = "word" + (i < 5 ? " top" : "");
-        el.textContent = matches[i];
+        el.className = "word top";
+        el.textContent = answerMatches[i];
         resultsEl.appendChild(el);
       }
-      if (matches.length > limit) {
+      if (answerMatches.length > shownAnswers) {
+        const more = document.createElement("span");
+        more.className = "word top";
+        more.textContent = `+${answerMatches.length - shownAnswers} more`;
+        resultsEl.appendChild(more);
+      }
+      const shownExtras = Math.min(extraMatches.length, EXTRA_LIMIT);
+      for (let i = 0; i < shownExtras; i++) {
+        const el = document.createElement("span");
+        el.className = "word";
+        el.textContent = extraMatches[i];
+        resultsEl.appendChild(el);
+      }
+      if (extraMatches.length > shownExtras) {
         const more = document.createElement("span");
         more.className = "word";
-        more.textContent = `+${matches.length - limit} more`;
+        more.textContent = `+${extraMatches.length - shownExtras} more`;
         resultsEl.appendChild(more);
+      }
+    }
+
+    // Ordered list of every field so Space / letter entry can tab through them.
+    const allFields = [
+      ...$("greens").querySelectorAll("input"),
+      ...$("yellows").querySelectorAll("input"),
+      $("grays"),
+    ];
+    function focusNextField(current) {
+      const idx = allFields.indexOf(current);
+      if (idx >= 0 && idx < allFields.length - 1) {
+        allFields[idx + 1].focus();
+        const next = allFields[idx + 1];
+        // Place caret at end for the grays text input.
+        if (next.type === "text" && next.maxLength !== 1) {
+          const len = next.value.length;
+          try { next.setSelectionRange(len, len); } catch {}
+        }
+      }
+    }
+    function focusPrevField(current) {
+      const idx = allFields.indexOf(current);
+      if (idx > 0) {
+        allFields[idx - 1].focus();
       }
     }
 
@@ -244,18 +307,27 @@
         inp.addEventListener("input", (e) => {
           const v = inp.value.replace(/[^a-zA-Z]/g, "").slice(-1).toLowerCase();
           inp.value = v;
-          if (v && i < inputs.length - 1) inputs[i + 1].focus();
+          if (v) focusNextField(inp);
         });
         inp.addEventListener("keydown", (e) => {
-          if (e.key === "Backspace" && !inp.value && i > 0) {
-            inputs[i - 1].focus();
-            inputs[i - 1].value = "";
+          if (e.key === " ") {
+            // Space advances to next field without typing anything.
             e.preventDefault();
+            focusNextField(inp);
+          } else if (e.key === "Backspace" && !inp.value) {
+            e.preventDefault();
+            if (i > 0) {
+              inputs[i - 1].focus();
+              inputs[i - 1].value = "";
+            } else {
+              focusPrevField(inp);
+            }
           } else if (e.key === "ArrowLeft" && i > 0) {
             inputs[i - 1].focus(); e.preventDefault();
           } else if (e.key === "ArrowRight" && i < inputs.length - 1) {
             inputs[i + 1].focus(); e.preventDefault();
           } else if (e.key === "Enter") {
+            e.preventDefault();
             suggest();
           }
         });
@@ -270,9 +342,23 @@
       $("yellows").querySelectorAll("input").forEach((i) => (i.value = ""));
       $("grays").value = "";
       resultsEl.innerHTML = "";
-      statusEl.textContent = `${WORDS.length.toLocaleString()} words loaded.`;
+      statusEl.textContent =
+        `${ANSWERS.length.toLocaleString()} Wordle answers + ` +
+        `${EXTRAS.length.toLocaleString()} other valid words ` +
+        `(${(ANSWERS.length + EXTRAS.length).toLocaleString()} total).`;
+      $("greens").querySelector("input").focus();
     });
-    $("grays").addEventListener("keydown", (e) => { if (e.key === "Enter") suggest(); });
+    // Grays field: Enter submits, Space also moves on (but grays is the last
+    // field so Space just prevents an accidental space char).
+    $("grays").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); suggest(); }
+      else if (e.key === " ") { e.preventDefault(); focusNextField($("grays")); }
+    });
+    // Keep the grays input tidy: strip anything that isn't a letter.
+    $("grays").addEventListener("input", () => {
+      const cleaned = $("grays").value.toLowerCase().replace(/[^a-z]/g, "");
+      if (cleaned !== $("grays").value) $("grays").value = cleaned;
+    });
   </script>
 </body>
 </html>
