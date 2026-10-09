@@ -18,6 +18,7 @@ pwa-hub/
 ├── icons/                  # Add icon-192.png, icon-512.png, icon-512-maskable.png
 └── tools/
     ├── _template/          # Copy this to start a new tool
+    ├── reading-drill/      # Full-screen reading practice
     └── wordle-helper/      # Example tool
 ```
 
@@ -29,6 +30,11 @@ pwa-hub/
    { "name": "...", "description": "...", "emoji": "🧠", "path": "./tools/<name>/" }
    ```
 3. Commit & push. Your host redeploys. Pull-to-refresh on the phone.
+
+### Update the reading drill
+
+Edit `tools/reading-drill/words.json`, keeping one quoted word per line in the
+JSON array. Commit and push the change, then refresh the hub on the phone.
 
 ## Run locally
 

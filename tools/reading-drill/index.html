@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Reading Drill</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("clawpilotTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      background:
+        linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--cp-warning) 9%, var(--cp-bg)),
+          var(--cp-bg) 46%,
+          color-mix(in srgb, var(--cp-accent) 9%, var(--cp-bg))
+        );
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      overscroll-behavior: none;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .setup,
+    .complete {
+      width: min(100% - 32px, 560px);
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding:
+        max(24px, env(safe-area-inset-top))
+        0
+        max(24px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: center;
+    }
+
+    .back-link {
+      position: absolute;
+      top: max(16px, env(safe-area-inset-top));
+      left: max(16px, env(safe-area-inset-left));
+      padding: 8px 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-panel);
+      color: var(--cp-text-muted);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .panel {
+      padding: 28px;
+      border: 2px solid color-mix(in srgb, var(--cp-accent) 18%, var(--cp-border));
+      border-radius: 16px;
+      background: var(--cp-panel-strong);
+    }
+
+    .letter-play {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .letter-tile {
+      display: grid;
+      width: 46px;
+      height: 46px;
+      place-items: center;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      color: var(--cp-text);
+      font-family: Georgia, serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      transform: rotate(-3deg);
+    }
+
+    .letter-tile:nth-child(1) {
+      background: color-mix(in srgb, var(--cp-warning) 22%, var(--cp-surface));
+    }
+
+    .letter-tile:nth-child(2) {
+      background: color-mix(in srgb, var(--cp-success) 18%, var(--cp-surface));
+      transform: translateY(4px) rotate(2deg);
+    }
+
+    .letter-tile:nth-child(3) {
+      background: color-mix(in srgb, var(--cp-accent) 16%, var(--cp-surface));
+      transform: rotate(4deg);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--cp-accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 10vw, 3.5rem);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .intro {
+      margin: 16px 0 0;
+      color: var(--cp-text-muted);
+      font-size: 1.05rem;
+    }
+
+    .word-count {
+      width: max-content;
+      margin: 24px 0 0;
+      padding: 7px 11px;
+      border-radius: 0.625rem;
+      background: color-mix(in srgb, var(--cp-success) 13%, var(--cp-surface));
+      color: var(--cp-text);
+      font-weight: 700;
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      padding: 14px 16px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: color-mix(in srgb, var(--cp-link) 7%, var(--cp-surface));
+      cursor: pointer;
+    }
+
+    .option input {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      accent-color: var(--cp-accent);
+    }
+
+    .primary,
+    .secondary {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 16px;
+      padding: 12px 20px;
+      border-radius: 0.625rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary {
+      border: 1px solid var(--cp-accent);
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+    }
+
+    .primary:hover {
+      border-color: var(--cp-accent-hover);
+      background: var(--cp-accent-hover);
+    }
+
+    .primary:disabled {
+      border-color: var(--cp-border);
+      background: var(--cp-surface-soft);
+      color: var(--cp-text-muted);
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      border: 1px solid var(--cp-border-strong);
+      background: var(--cp-surface);
+      color: var(--cp-text);
+    }
+
+    .error {
+      margin: 16px 0 0;
+      padding: 12px;
+      border: 1px solid var(--cp-danger);
+      border-radius: 0.625rem;
+      color: var(--cp-danger);
+    }
+
+    .drill {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--cp-accent) 7%, var(--cp-bg-elevated));
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .drill[data-tone="mint"] {
+      background: color-mix(in srgb, var(--cp-success) 9%, var(--cp-bg-elevated));
+    }
+
+    .drill[data-tone="sun"] {
+      background: color-mix(in srgb, var(--cp-warning) 11%, var(--cp-bg-elevated));
+    }
+
+    .drill[data-tone="sky"] {
+      background: color-mix(in srgb, var(--cp-link) 8%, var(--cp-bg-elevated));
+    }
+
+    .drill::before,
+    .drill::after {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      content: "";
+      pointer-events: none;
+    }
+
+    .drill::before {
+      top: -110px;
+      right: -80px;
+      background: color-mix(in srgb, var(--cp-accent) 13%, var(--cp-bg-elevated));
+    }
+
+    .drill::after {
+      bottom: -130px;
+      left: -70px;
+      background: color-mix(in srgb, var(--cp-warning) 15%, var(--cp-bg-elevated));
+    }
+
+    .tap-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .tap-zone:focus-visible {
+      outline: 3px solid var(--cp-accent);
+      outline-offset: -6px;
+    }
+
+    .previous {
+      left: 0;
+    }
+
+    .next {
+      right: 0;
+    }
+
+    .word-card {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: max(72px, env(safe-area-inset-top)) 24px max(64px, env(safe-area-inset-bottom));
+      pointer-events: none;
+    }
+
+    .word {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      color: var(--cp-text);
+      line-height: 1;
+      text-align: center;
+    }
+
+    .progress {
+      position: absolute;
+      top: max(20px, env(safe-area-inset-top));
+      left: 50%;
+      margin: 0;
+      padding: 6px 11px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-panel);
+      color: var(--cp-text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .exit {
+      position: absolute;
+      z-index: 2;
+      top: max(12px, env(safe-area-inset-top));
+      left: max(12px, env(safe-area-inset-left));
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--cp-border);
+      border-radius: 50%;
+      background: var(--cp-panel);
+      color: var(--cp-text);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .tap-hint {
+      position: absolute;
+      right: auto;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      left: 50%;
+      margin: 0;
+      padding: 7px 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-panel);
+      color: var(--cp-text-soft);
+      font-size: 0.85rem;
+      text-align: center;
+      transform: translateX(-50%);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .complete {
+      text-align: center;
+    }
+
+    .complete-mark {
+      display: grid;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 16px;
+      place-items: center;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--cp-success) 16%, var(--cp-surface));
+      color: var(--cp-success);
+      font-size: 2.75rem;
+      line-height: 1;
+    }
+
+    .celebration {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .celebration span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--cp-warning);
+    }
+
+    .celebration span:nth-child(2) {
+      background: var(--cp-success);
+      transform: translateY(-6px);
+    }
+
+    .celebration span:nth-child(3) {
+      background: var(--cp-accent);
+    }
+
+    .celebration span:nth-child(4) {
+      background: var(--cp-link);
+      transform: translateY(-6px);
+    }
+
+    .celebration span:nth-child(5) {
+      background: var(--cp-warning);
+    }
+
+    .complete h2 {
+      margin: 0;
+      font-size: clamp(2rem, 10vw, 3.25rem);
+    }
+
+    .complete p {
+      margin: 12px 0 8px;
+      color: var(--cp-text-muted);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .word {
+        animation: word-in 160ms ease-out;
+      }
+
+      @keyframes word-in {
+        from {
+          opacity: 0;
+          transform: scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="setup" class="setup">
+    <a class="back-link" href="../../">&larr; Hub</a>
+    <section class="panel" aria-labelledby="title">
+      <div class="letter-play" aria-hidden="true">
+        <span class="letter-tile">A</span>
+        <span class="letter-tile">b</span>
+        <span class="letter-tile">c</span>
+      </div>
+      <p class="eyebrow">Little word practice</p>
+      <h1 id="title">Ready to read?</h1>
+      <p class="intro">Read each word aloud. During the drill, tap the left side to go back or the right side to continue.</p>
+      <p id="word-count" class="word-count" aria-live="polite">Loading words...</p>
+      <label class="option">
+        <input id="shuffle" type="checkbox" />
+        <span>Shuffle the word order</span>
+      </label>
+      <button id="start" class="primary" type="button" disabled>Start drill</button>
+      <p id="load-error" class="error" role="alert" hidden></p>
+    </section>
+  </main>
+
+  <main id="drill" class="drill" aria-label="Reading drill" hidden>
+    <button id="previous" class="tap-zone previous" type="button" aria-label="Previous word"></button>
+    <button id="next" class="tap-zone next" type="button" aria-label="Next word"></button>
+    <div class="word-card" aria-live="polite">
+      <span id="word" class="word"></span>
+    </div>
+    <p id="progress" class="progress"></p>
+    <button id="exit" class="exit" type="button" aria-label="End drill">&times;</button>
+    <p class="tap-hint" aria-hidden="true">&larr; Back&nbsp;&nbsp;&nbsp;&nbsp;Next &rarr;</p>
+  </main>
+
+  <main id="complete" class="complete" hidden>
+    <section class="panel" aria-labelledby="complete-title">
+      <div class="celebration" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <p class="complete-mark" aria-hidden="true">&#10003;</p>
+      <h2 id="complete-title">Great job!</h2>
+      <p>You finished every word.</p>
+      <button id="again" class="primary" type="button">Practice again</button>
+      <button id="done" class="secondary" type="button">Back to Hub</button>
+    </section>
+  </main>
+
+  <script>
+    const stylePool = [
+      { family: "-apple-system, BlinkMacSystemFont, sans-serif", weight: "500", spacing: "0" },
+      { family: "Arial, sans-serif", weight: "600", spacing: "0.015em" },
+      { family: "Avenir, 'Segoe UI', sans-serif", weight: "500", spacing: "0.025em" },
+      { family: "Verdana, sans-serif", weight: "500", spacing: "-0.015em" },
+      { family: "Georgia, serif", weight: "600", spacing: "0.01em" },
+      { family: "'Times New Roman', Times, serif", weight: "600", spacing: "0.02em" },
+      { family: "'Trebuchet MS', sans-serif", weight: "600", spacing: "0.01em" }
+    ];
+
+    const setupScreen = document.getElementById("setup");
+    const drillScreen = document.getElementById("drill");
+    const completeScreen = document.getElementById("complete");
+    const wordCount = document.getElementById("word-count");
+    const loadError = document.getElementById("load-error");
+    const shuffleInput = document.getElementById("shuffle");
+    const startButton = document.getElementById("start");
+    const previousButton = document.getElementById("previous");
+    const nextButton = document.getElementById("next");
+    const exitButton = document.getElementById("exit");
+    const againButton = document.getElementById("again");
+    const doneButton = document.getElementById("done");
+    const wordElement = document.getElementById("word");
+    const progressElement = document.getElementById("progress");
+
+    let sourceWords = [];
+    let sessionWords = [];
+    let sessionStyles = [];
+    let currentIndex = 0;
+
+    async function loadWords() {
+      try {
+        const response = await fetch("./words.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`The word list could not be loaded (HTTP ${response.status}).`);
+        }
+
+        const words = await response.json();
+        if (!Array.isArray(words) || words.length === 0 || words.some((word) => typeof word !== "string" || !word.trim())) {
+          throw new Error("words.json must contain a non-empty list of words.");
+        }
+
+        sourceWords = words.map((word) => word.trim());
+        wordCount.textContent = `${sourceWords.length} words ready`;
+        startButton.disabled = false;
+      } catch (error) {
+        loadError.textContent = error instanceof Error ? error.message : "The word list could not be loaded.";
+        loadError.hidden = false;
+        wordCount.textContent = "No words available";
+      }
+    }
+
+    function shuffled(items) {
+      const result = [...items];
+      for (let index = result.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+      }
+      return result;
+    }
+
+    function createStyleAssignments(count) {
+      const assignments = [];
+      let available = shuffled(stylePool);
+
+      for (let index = 0; index < count; index += 1) {
+        if (available.length === 0) {
+          available = shuffled(stylePool);
+        }
+        assignments.push(available.pop());
+      }
+
+      return assignments;
+    }
+
+    function showOnly(screen) {
+      setupScreen.hidden = screen !== setupScreen;
+      drillScreen.hidden = screen !== drillScreen;
+      completeScreen.hidden = screen !== completeScreen;
+    }
+
+    function startDrill() {
+      sessionWords = shuffleInput.checked ? shuffled(sourceWords) : [...sourceWords];
+      sessionStyles = createStyleAssignments(sessionWords.length);
+      currentIndex = 0;
+      showOnly(drillScreen);
+      renderWord();
+      nextButton.focus({ preventScroll: true });
+    }
+
+    function renderWord() {
+      const style = sessionStyles[currentIndex];
+      const tones = ["rose", "mint", "sun", "sky"];
+      drillScreen.dataset.tone = tones[currentIndex % tones.length];
+      wordElement.textContent = sessionWords[currentIndex];
+      wordElement.style.fontFamily = style.family;
+      wordElement.style.fontWeight = style.weight;
+      wordElement.style.letterSpacing = style.spacing;
+      wordElement.style.fontSize = currentIndex % 3 === 0
+        ? "clamp(4.5rem, 24vw, 11rem)"
+        : currentIndex % 3 === 1
+          ? "clamp(4.25rem, 22vw, 10rem)"
+          : "clamp(4.75rem, 25vw, 11.5rem)";
+      progressElement.textContent = `${currentIndex + 1} of ${sessionWords.length}`;
+    }
+
+    function previousWord() {
+      if (currentIndex === 0) {
+        return;
+      }
+      currentIndex -= 1;
+      renderWord();
+    }
+
+    function nextWord() {
+      if (currentIndex === sessionWords.length - 1) {
+        showOnly(completeScreen);
+        againButton.focus({ preventScroll: true });
+        return;
+      }
+      currentIndex += 1;
+      renderWord();
+    }
+
+    function endDrill() {
+      showOnly(setupScreen);
+      startButton.focus({ preventScroll: true });
+    }
+
+    startButton.addEventListener("click", startDrill);
+    previousButton.addEventListener("click", previousWord);
+    nextButton.addEventListener("click", nextWord);
+    exitButton.addEventListener("click", endDrill);
+    againButton.addEventListener("click", startDrill);
+    doneButton.addEventListener("click", () => {
+      window.location.href = "../../";
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (drillScreen.hidden) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        previousWord();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        nextWord();
+      } else if (event.key === "Escape") {
+        endDrill();
+      }
+    });
+
+    loadWords();
+  </script>
+</body>
+</html>

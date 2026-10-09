@@ -1,5 +1,5 @@
 // Simple network-first service worker with offline fallback for shell files.
-const VERSION = "v13";
+const VERSION = "v15";
 const CACHE = `hub-${VERSION}`;
 const SHELL = [
   "./",
@@ -7,7 +7,10 @@ const SHELL = [
   "./styles.css",
   "./app.js",
   "./tools.json",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./tools/reading-drill/",
+  "./tools/reading-drill/index.html",
+  "./tools/reading-drill/words.json"
 ];
 
 self.addEventListener("install", (event) => {
