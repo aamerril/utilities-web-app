@@ -206,25 +206,6 @@
       font-weight: 700;
     }
 
-    .option {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 20px;
-      padding: 14px 16px;
-      border: 1px solid var(--cp-border);
-      border-radius: 0.625rem;
-      background: color-mix(in srgb, var(--cp-link) 7%, var(--cp-surface));
-      cursor: pointer;
-    }
-
-    .option input {
-      width: 20px;
-      height: 20px;
-      margin: 0;
-      accent-color: var(--cp-accent);
-    }
-
     .primary,
     .secondary {
       width: 100%;
@@ -492,12 +473,8 @@
       </div>
       <p class="eyebrow">Little word practice</p>
       <h1 id="title">Ready to read?</h1>
-      <p class="intro">Read each word aloud. During the drill, tap the left side to go back or the right side to continue.</p>
+      <p class="intro">Read each word aloud. Words and letter styles change each round. Tap the left side to go back or the right side to continue.</p>
       <p id="word-count" class="word-count" aria-live="polite">Loading words...</p>
-      <label class="option">
-        <input id="shuffle" type="checkbox" />
-        <span>Shuffle the word order</span>
-      </label>
       <button id="start" class="primary" type="button" disabled>Start drill</button>
       <p id="load-error" class="error" role="alert" hidden></p>
     </section>
@@ -543,7 +520,6 @@
     const completeScreen = document.getElementById("complete");
     const wordCount = document.getElementById("word-count");
     const loadError = document.getElementById("load-error");
-    const shuffleInput = document.getElementById("shuffle");
     const startButton = document.getElementById("start");
     const previousButton = document.getElementById("previous");
     const nextButton = document.getElementById("next");
@@ -610,7 +586,7 @@
     }
 
     function startDrill() {
-      sessionWords = shuffleInput.checked ? shuffled(sourceWords) : [...sourceWords];
+      sessionWords = shuffled(sourceWords);
       sessionStyles = createStyleAssignments(sessionWords.length);
       currentIndex = 0;
       showOnly(drillScreen);
@@ -618,11 +594,22 @@
       nextButton.focus({ preventScroll: true });
     }
 
+    function formatWord(word, index) {
+      const lowercase = word.toLocaleLowerCase("en-US");
+      if (index % 3 === 0) {
+        return lowercase;
+      }
+      if (index % 3 === 1) {
+        return word.toLocaleUpperCase("en-US");
+      }
+      return lowercase.charAt(0).toLocaleUpperCase("en-US") + lowercase.slice(1);
+    }
+
     function renderWord() {
       const style = sessionStyles[currentIndex];
       const tones = ["rose", "mint", "sun", "sky"];
       drillScreen.dataset.tone = tones[currentIndex % tones.length];
-      wordElement.textContent = sessionWords[currentIndex];
+      wordElement.textContent = formatWord(sessionWords[currentIndex], currentIndex);
       wordElement.style.fontFamily = style.family;
       wordElement.style.fontWeight = style.weight;
       wordElement.style.letterSpacing = style.spacing;
